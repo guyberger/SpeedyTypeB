@@ -4,8 +4,12 @@
 #include <set>
 #include <chrono>
 #include <unordered_map>
+#include <random>
+#include <iostream>
+#include <fstream>
 using namespace std;
-
+#define MODES 1
+#define DIFF 2
 #define MAX_WORD_SIZE 100
 
 WINDOW * MakeWin(int, int, int, int, bool);
@@ -14,17 +18,83 @@ void DisplayWords(WINDOW* disp_win, set<string>& disp_dict, unordered_map<string
 void AddWord(set<string>& dict, set<string>& disp_dict, unordered_map<string, pair<int,int>>& wmap);
 void RemoveWord(set<string>& disp_dict, string& w);
 int kbhit(WINDOW*);
+char printMenu();
+char printDiff();
+int gameplay(char, char);
 int main(){
 
 	initscr();
 	cbreak();
+	noecho();
+	char c = printMenu();
+	clear();
+	char diff = printDiff();	// 1 regular, 2 god mode
+	gameplay(c, diff);
+
+	return 0;
+}
+char printMenu(){
+
+	mvprintw(LINES/2-1, (COLS-17)/2, "Choose a mode to play");
+	mvprintw(LINES/2, (COLS-17)/2, "1. Rick and Morty");
+	refresh();
+	char c = getch();
+	while(c < '1' || c > ('0'+MODES)){	//must choose a valid option
+		c = getch();
+	}
+	return c;
+}
+char printDiff(){
+
+	mvprintw(LINES/2-1, (COLS-17)/2, "Choose difficulty");
+	mvprintw(LINES/2, (COLS-17)/2, "1. Regular");
+	mvprintw(LINES/2+1, (COLS-17)/2, "2. God Mode");
+	refresh();
+	char c = getch();
+	while(c < '1' || c > ('0'+DIFF)){	//must choose a valid option
+		c = getch();
+	}
+	return c;
+}
+
+int gameplay(char mode, char difficulty){
+
+	//initscr();
+	//cbreak();
 
 	// Define windows and variales
 	
+	//string mydict[] = {"box", "cow", "words", "leaves"};
+	set<string> dict;
+	fstream myfile;
+	switch(mode){
+		case '1':
+			myfile.open("RickMortyDict.txt", fstream::in);
+			break;
+		default:
+			break;
+	}
+	try{
+		char buffer[MAX_WORD_SIZE] = {0};
+		while(myfile.getline(buffer, MAX_WORD_SIZE)){
+			string s = "";
+			int i=0;
+			while(buffer[i]) 
+				s += buffer[i++];
+			dict.insert(s);
+		}
+	}
+	catch(...){
+		
+	};
+	switch(difficulty){
+		case '1':
+			echo();
+			break;
+		default: break;
+	}
 
-	int startx = 0, starty = LINES - 15;
-	string mydict[] = {"box"};
-	set<string> dict(mydict, mydict + sizeof(mydict)/sizeof(string));
+	int startx = 0, starty = LINES*4/5;
 
 	WINDOW * inp_win_box = MakeWin(LINES - starty, COLS, starty, startx, 1);
 	WINDOW * inp_win = MakeWin(LINES - starty - 2, COLS - 4, starty+1, startx + 3, 0);
@@ -35,6 +105,7 @@ int main(){
 	wrefresh(inp_win_box);
 	wmove(inp_win, 0 ,0);
 
+		
 	// Actual Gameplay
 
 	nodelay(inp_win, true);
@@ -62,6 +133,9 @@ void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict){
 
 	string s("");
 	int last = 0; //to know when half a second has passed
+	int last_sec = 0;
+	double sec_counter = 0;
+	bool first = true;
 
 	while(1){	// main loop to play game...
 		auto curr_time = std::chrono::high_resolution_clock::now();
@@ -71,13 +145,16 @@ void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict){
 		if(last+500 < diff){
 			half_sec_passed = 1;
 			last = diff;
+			sec_counter += 0.5;
 		}
 
-		if(diff % 3 == 0){	// add a word every 3 seconds
+		if((first)||(last_sec < (int)sec_counter && (int)sec_counter % 4 == 0)){	// add a word every 4 seconds
 			
 			//mvwprintw(disp_win, 5, 5, "HRERE");
 			//wrefresh(disp_win);
 			AddWord(dict, disp_dict, wmap);
+			last_sec = (int)sec_counter;
+			first = false;
 		}
 		if(half_sec_passed){
 			int x,y;
@@ -92,6 +169,12 @@ void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict){
 				s.erase(s.length()-1,1);
 				wdelch(inp_win);
 				wdelch(inp_win);
+				continue;
+			}
+			
+			else if(c < 'A' || c > 'z' || (c < 'a' && c > 'Z')) {
+				s = "";
+				wclear(inp_win);
 				continue;
 			}
 			s += c;
@@ -110,7 +193,9 @@ void AddWord(set<string>& dict, set<string>& disp_dict, unordered_map<string, pa
 	string word(*(dict.begin()));
 	dict.erase(word);
 	disp_dict.insert(word);
-	pair<int,int> coords = make_pair(0,0);	// (x,y)
+	random_device rd;
+	int yloc = (int)(rd()%(LINES*4/5-2)+1);	
+	pair<int,int> coords = make_pair(0,yloc);	// (x,y)
 	wmap[word] = coords;
 
 }
