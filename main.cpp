@@ -10,7 +10,7 @@ using namespace std;
 
 WINDOW * MakeWin(int, int, int, int, bool);
 void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict);
-void DisplayWords(WINDOW* disp_win, set<string>& disp_dict, unordered_map<string, pair<int,int>> wmap, int diff);
+void DisplayWords(WINDOW* disp_win, set<string>& disp_dict, unordered_map<string, pair<int,int>>& wmap);
 void AddWord(set<string>& dict, set<string>& disp_dict, unordered_map<string, pair<int,int>>& wmap);
 void RemoveWord(set<string>& disp_dict, string& w);
 int kbhit(WINDOW*);
@@ -18,7 +18,6 @@ int main(){
 
 	initscr();
 	cbreak();
-	nodelay(stdscr, TRUE);
 
 	// Define windows and variales
 	
@@ -34,8 +33,11 @@ int main(){
 	mvwprintw(inp_win_box, 1, 1, ">");
 	
 	wrefresh(inp_win_box);
+	wmove(inp_win, 0 ,0);
 
 	// Actual Gameplay
+
+	nodelay(inp_win, true);
 
 	play(inp_win, disp_win, dict);
 	getch();	
@@ -57,25 +59,32 @@ void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict){
 	unordered_map<string, pair<int, int>> wmap;
 	auto start_time = std::chrono::high_resolution_clock::now();
 	set<string> disp_dict = {};
-	int count_sec = 0;
 
 	string s("");
-
+	int last = 0; //to know when half a second has passed
 
 	while(1){	// main loop to play game...
 		auto curr_time = std::chrono::high_resolution_clock::now();
-		auto time_diff = std::chrono::duration_cast<std::chrono::seconds>(curr_time - start_time);
-		int diff = time_diff.count();
-		//mvwprintw(disp_win, 5, 5, "TIME IS %d", diff);
-		//wrefresh(disp_win);
-		//return;
-		if(diff >= count_sec && diff % 4 == 0){
-			count_sec++;
+		auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(curr_time - start_time);
+		int diff = time_diff.count();	// diff is the seconds elapsed from the start
+		int half_sec_passed = 0;
+		if(last+500 < diff){
+			half_sec_passed = 1;
+			last = diff;
+		}
+
+		if(diff % 3 == 0){	// add a word every 3 seconds
+			
 			//mvwprintw(disp_win, 5, 5, "HRERE");
 			//wrefresh(disp_win);
 			AddWord(dict, disp_dict, wmap);
 		}
-		DisplayWords(disp_win, disp_dict, wmap, count_sec);
+		if(half_sec_passed){
+			int x,y;
+			getyx(inp_win, y, x);
+		       	DisplayWords(disp_win, disp_dict, wmap);
+			wmove(inp_win, y, x);
+		}
 		if(kbhit(inp_win)){	//a key was pressed
 			char c = wgetch(inp_win);	// keep checking for a win. winning == user enetred 'sup'
 			if(c == 8){
@@ -91,7 +100,6 @@ void play(WINDOW* inp_win, WINDOW* disp_win, set<string>& dict){
 				s = "";
 				wclear(inp_win);
 				//mvwprintw(disp_win, 0, 0, "You win!");
-				wrefresh(disp_win);
 			}	
 		}	
 	
@@ -110,21 +118,19 @@ void RemoveWord(set<string>& disp_dict, string& w){
 	disp_dict.erase(w);
 
 }
-void DisplayWords(WINDOW* disp_win, set<string>& disp_dict, unordered_map<string, pair<int,int>> wmap, int diff){
+void DisplayWords(WINDOW* disp_win, set<string>& disp_dict, unordered_map<string, pair<int,int>>& wmap){
 	wclear(disp_win);
-	diff = diff%2;
 	for(auto w : disp_dict){
 		pair<int,int> coords = wmap[w];
 		char word[MAX_WORD_SIZE] = {0};
 		for(int i=0;i<w.length();i++){
 			word[i] = w[i];
 		}
-		mvwprintw(disp_win, coords.second+diff, coords.first, word);	//advance word to the right
-		wmap[w] = make_pair(coords.first, coords.second+diff);
+		mvwprintw(disp_win, coords.second, coords.first+1, word);	//advance word to the right
+		wmap[w] = make_pair(coords.first+1, coords.second);
 	
 	}
 	wrefresh(disp_win);
-
 
 }
 int kbhit(WINDOW* inp_win)
