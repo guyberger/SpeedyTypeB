@@ -1,2 +1,3 @@
-# SpeedyTypeB
-Speed typing game inspired by the original speed type.
+# TypoManiac
+Teaching fast/blind typing game.
+Inspired by the original typespeed.
