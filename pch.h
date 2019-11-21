@@ -10,7 +10,7 @@
 #ifndef PCH_H
 #define PCH_H
 //#define _AFXDLL 1
-#include "C:\temp\PDCurses-3.8\curses.h"
+#include "PDCurses-3.8\curses.h"
 #include <string>
 #include <set>
 #include <chrono>
